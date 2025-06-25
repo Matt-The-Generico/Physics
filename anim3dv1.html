@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Animação 3D com HTML, CSS e JS</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .scene {
+      width: 200px;
+      height: 200px;
+      perspective: 600px;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: spin 5s infinite linear;
+    }
+
+    .face {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      background: rgba(0, 200, 255, 0.6);
+      border: 2px solid #0ff;
+      box-sizing: border-box;
+      color: #fff;
+      font-size: 2rem;
+      text-align: center;
+      line-height: 200px;
+      font-family: sans-serif;
+    }
+
+    .front  { transform: rotateY(0deg) translateZ(100px); }
+    .back   { transform: rotateY(180deg) translateZ(100px); }
+    .right  { transform: rotateY(90deg) translateZ(100px); }
+    .left   { transform: rotateY(-90deg) translateZ(100px); }
+    .top    { transform: rotateX(90deg) translateZ(100px); }
+    .bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+    @keyframes spin {
+      from { transform: rotateX(0deg) rotateY(0deg); }
+      to   { transform: rotateX(360deg) rotateY(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="cube" id="cube">
+      <div class="face front">1</div>
+      <div class="face back">2</div>
+      <div class="face right">3</div>
+      <div class="face left">4</div>
+      <div class="face top">5</div>
+      <div class="face bottom">6</div>
+    </div>
+  </div>
+
+  <script>
+    // Você pode adicionar interações JS aqui se quiser controlar a rotação com o mouse etc.
+    // Exemplo extra:
+    let cube = document.getElementById('cube');
+    let angleX = 0;
+    let angleY = 0;
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'ArrowRight') angleY += 10;
+      if (event.key === 'ArrowLeft') angleY -= 10;
+      if (event.key === 'ArrowUp') angleX += 10;
+      if (event.key === 'ArrowDown') angleX -= 10;
+
+      cube.style.animation = 'none';
+      cube.style.transform = `rotateX(${angleX}deg) rotateY(${angleY}deg)`;
+    });
+  </script>
+</body>
+</html>
