@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Torre de Caixas 3D</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+    canvas { display: block; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      color: white;
+      z-index: 10;
+      border-radius: 8px;
+    }
+    #controls input, #controls label {
+      display: block;
+      margin: 5px 0;
+    }
+    #generateBtn {
+      margin-top: 10px;
+      padding: 5px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>
+      Tamanho da Caixa:
+      <input type="number" id="boxSize" value="2" min="0.1" step="0.1">
+    </label>
+    <label>
+      Quantidade de Caixas:
+      <input type="number" id="boxCount" value="5" min="1" max="1000">
+    </label>
+    <label>
+      Cor da Caixa:
+      <input type="color" id="boxColor" value="#3399ff">
+    </label>
+    <label>
+      Gravidade (Y):
+      <input type="number" id="gravityY" value="-9.82" step="0.1">
+    </label>
+    <button id="generateBtn">Gerar Torre</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.141.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+
+  <script>
+    let scene, camera, renderer, world;
+    let boxes = [], spheres = [], groundBody, groundMesh;
+    let boxGeo, boxMat;
+
+    // Inicializa tudo uma única vez
+    function initScene() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+      camera.position.set(0, 10, 25);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      // Luzes
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(10, 20, 10);
+      light.castShadow = true;
+      scene.add(light);
+      scene.add(new THREE.AmbientLight(0x404040));
+
+      // Física
+      world = new CANNON.World();
+      world.gravity.set(0, parseFloat(document.getElementById('gravityY').value), 0);
+      world.broadphase = new CANNON.NaiveBroadphase();
+
+      // Chão
+      const groundShape = new CANNON.Plane();
+      groundBody = new CANNON.Body({ mass: 0 });
+      groundBody.addShape(groundShape);
+      groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      world.addBody(groundBody);
+
+      groundMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        new THREE.MeshStandardMaterial({ color: 0x222222 })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.receiveShadow = true;
+      scene.add(groundMesh);
+    }
+
+    function clearScene() {
+      [...boxes, ...spheres].forEach(obj => {
+        scene.remove(obj.mesh);
+        world.removeBody(obj.body);
+      });
+      boxes = [];
+      spheres = [];
+    }
+
+    function generateBoxes() {
+      clearScene();
+      world.gravity.set(0, parseFloat(document.getElementById('gravityY').value), 0);
+
+      const boxSize = parseFloat(document.getElementById('boxSize').value);
+      const boxCount = parseInt(document.getElementById('boxCount').value);
+      const boxColor = document.getElementById('boxColor').value;
+
+      boxGeo = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+      boxMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(boxColor) });
+
+      for (let i = 0; i < boxCount; i++) {
+        const mesh = new THREE.Mesh(boxGeo, boxMat);
+        mesh.castShadow = true;
+        mesh.position.set(0, i * boxSize + boxSize / 2, 0);
+        scene.add(mesh);
+
+        const shape = new CANNON.Box(new CANNON.Vec3(boxSize / 2, boxSize / 2, boxSize / 2));
+        const body = new CANNON.Body({ mass: 1 });
+        body.addShape(shape);
+        body.position.set(0, i * boxSize + boxSize / 2, 0);
+        world.addBody(body);
+
+        boxes.push({ mesh, body });
+      }
+    }
+
+    function launchBall(event) {
+      if (event.target.closest('#controls')) return;
+
+      const ballRadius = 0.5;
+      const sphereGeo = new THREE.SphereGeometry(ballRadius, 32, 32);
+      const sphereMat = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+      const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+      sphereMesh.castShadow = true;
+      scene.add(sphereMesh);
+
+      const ballShape = new CANNON.Sphere(ballRadius);
+      const ballBody = new CANNON.Body({ mass: 5 });
+      ballBody.addShape(ballShape);
+      ballBody.position.set(camera.position.x, camera.position.y, camera.position.z);
+      world.addBody(ballBody);
+
+      const mouse = new THREE.Vector2(
+        (event.clientX / innerWidth) * 2 - 1,
+        -(event.clientY / innerHeight) * 2 + 1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const dir = raycaster.ray.direction;
+
+      ballBody.velocity.set(dir.x * 30, dir.y * 30, dir.z * 30);
+
+      spheres.push({ mesh: sphereMesh, body: ballBody });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      world.step(1 / 60);
+
+      boxes.forEach(obj => {
+        obj.mesh.position.copy(obj.body.position);
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+      });
+
+      spheres.forEach(obj => {
+        obj.mesh.position.copy(obj.body.position);
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    // Inicialização ao carregar
+    initScene();
+    generateBoxes();
+    animate();
+
+    document.getElementById('generateBtn').addEventListener('click', generateBoxes);
+    window.addEventListener("click", launchBall);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>
