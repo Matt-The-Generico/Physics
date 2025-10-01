@@ -15,7 +15,6 @@
   </style>
 </head>
 <body>
-  <!-- ✅ Versões compatíveis com uso direto -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
@@ -34,7 +33,7 @@
     scene.add(light);
     scene.add(new THREE.AmbientLight(0x404040));
 
-    // Cannon.js físico
+    // cannon.js
     const world = new CANNON.World();
     world.gravity.set(0, -9.82, 0);
 
@@ -100,7 +99,7 @@
       }
     }
 
-    // Clique para empurrar blocos
+    // push blocks
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -124,7 +123,7 @@
       }
     });
 
-    // Animação
+    // animation
     function animate() {
       requestAnimationFrame(animate);
       world.step(1 / 60);
@@ -139,7 +138,7 @@
 
     animate();
 
-    // Resize
+    // resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -148,3 +147,4 @@
   </script>
 </body>
 </html>
+
